@@ -89,6 +89,7 @@ enum {
 extern void dfu_set_alternative(uint8_t alt);
 extern void dfu_control_setup(void);
 extern void dfu_control_out_completion(void);
+extern void dfu_control_in_completion(void);
 
 
 

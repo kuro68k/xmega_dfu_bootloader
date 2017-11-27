@@ -40,6 +40,8 @@ void dfu_set_alternative(uint8_t alt)
 
 void dfu_control_setup(void)
 {
+	static uint32_t read_head = 0;
+
 	switch (usb_setup.bRequest)
 	{
 		// write block
@@ -64,15 +66,30 @@ void dfu_control_setup(void)
 					return;
 				}
 				SP_EraseApplicationPage(APP_SECTION_START + ((uint32_t)usb_setup.wValue * APP_SECTION_PAGE_SIZE));
-				//if (state != DFU_STATE_dfuERROR) {
-					state = DFU_STATE_dfuDNBUSY;
-					return usb_ep0_out();
-				//}
+				state = DFU_STATE_dfuDNBUSY;
+				return usb_ep0_out();
 			}
 			else
 				dfu_error(DFU_STATUS_errSTALLEDPKT);
 
 			return usb_ep0_stall();
+
+		// read memory
+		case DFU_UPLOAD:
+			if (usb_setup.wValue >= (APP_SECTION_SIZE / APP_SECTION_PAGE_SIZE))
+				return usb_ep0_in(0);	// end of firmware image
+			if (usb_setup.wLength > sizeof(write_buffer))
+			{
+				dfu_error(DFU_STATUS_errNOTDONE);
+				return;
+			}
+
+			//memcpy_PF(write_buffer, (uint32_t)(APP_SECTION_START + (usb_setup.wValue * APP_SECTION_PAGE_SIZE)), usb_setup.wLength);
+			memcpy_PF(write_buffer, read_head, usb_setup.wLength);
+			read_head += usb_setup.wLength;
+			state = DFU_STATE_dfuUPLOAD_IDLE;
+			usb_ep_start_in(0x80, write_buffer, usb_setup.wLength, false);
+			return;
 
 		// read status
 		case DFU_GETSTATUS: {
@@ -161,5 +178,14 @@ void dfu_control_out_completion(void)
 			else
 				usb_ep0_out();
 		}
+	}
+}
+
+void dfu_control_in_completion(void)
+{
+	if (state == DFU_STATE_dfuUPLOAD_IDLE)
+	{
+		// stay in UPLOAD_IDLE state as we are expecting further UPLOAD commands
+		usb_ep0_out();
 	}
 }

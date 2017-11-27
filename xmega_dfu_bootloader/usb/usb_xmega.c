@@ -158,7 +158,7 @@ inline void usb_ep0_out(void) {
 }
 
 inline void usb_ep0_in(uint8_t size){
-	usb_ep_start_in(0x80, ep0_buf_in, size, false);
+	usb_ep_start_in(0x80, ep0_buf_in, size, false);//size == USB_EP0_SIZE ? false : true);
 }
 
 inline void usb_ep0_stall(void) {
