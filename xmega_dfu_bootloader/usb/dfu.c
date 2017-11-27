@@ -160,6 +160,7 @@ void dfu_control_out_completion(void)
 					SP_WaitForSPM();
 					SP_LoadFlashPage(write_buffer);
 					SP_WriteApplicationPage(APP_SECTION_START + ((uint32_t)usb_setup.wValue * APP_SECTION_PAGE_SIZE));
+					memset(write_buffer, 0xFF, sizeof(write_buffer));
 				}
 				else					// EEPROM
 				{
@@ -169,6 +170,7 @@ void dfu_control_out_completion(void)
 						EEP_WaitForNVM();
 						EEP_LoadPageBuffer(&write_buffer[i * EEPROM_PAGE_SIZE], EEPROM_PAGE_SIZE);
 						EEP_AtomicWritePage((usb_setup.wValue * eeprom_pages_per_buffer) + i);
+						memset(write_buffer, 0xFF, sizeof(write_buffer));
 					}
 				}
 				write_head = 0;
