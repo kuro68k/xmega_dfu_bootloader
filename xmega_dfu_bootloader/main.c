@@ -24,7 +24,7 @@ int main(void)
 		AppPtr application_vector = (AppPtr)0x000000;
 		CCP = CCP_IOREG_gc;		// unlock IVSEL
 		PMIC.CTRL = 0;			// disable interrupts, set vector table to app section
-		EIND = 0;				// indirect jumps go to app section
+		EIND = 0;				// indirect jumps go to lower 128k of app section
 		RAMPZ = 0;				// LPM uses lower 64k of flash
 		application_vector();
 	}
