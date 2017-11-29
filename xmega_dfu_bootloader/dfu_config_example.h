@@ -8,6 +8,12 @@
 #define DFU_CONFIG_H_
 
 
+/* Generate a USB serial number from the MCU's unique identifiers. Can be
+ * disabled to save flash memory.
+ */
+#define	USB_SERIAL_NUMBER
+
+
 /* Store the first page written in RAM until the last page is written and
  * the bootloader enters the manifest state. The first page will be erased.
  * If the firmware update is interrupted the bootloader can detect and empty

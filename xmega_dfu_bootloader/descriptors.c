@@ -1,7 +1,11 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <util/delay.h>
+#include <stddef.h>
+#include "sp_driver.h"
 #include "usb_xmega.h"
 #include "dfu.h"
+#include "dfu_config.h"
 
 // Notes:
 // Fill in VID/PID in device_descriptor
@@ -32,7 +36,11 @@ const USB_DeviceDescriptor PROGMEM device_descriptor = {
 
 	.iManufacturer          = 0x01,
 	.iProduct               = 0x02,
-	.iSerialNumber          = 0,
+#ifdef USB_SERIAL_NUMBER
+	.iSerialNumber          = 0x03,
+#else
+	.iSerialNumber          = 0x00,
+#endif
 
 	.bNumConfigurations     = 1
 };
@@ -130,6 +138,38 @@ const __flash USB_StringDescriptor dfu_eeprom_string = {
 };
 
 
+#ifdef USB_SERIAL_NUMBER
+USB_StringDescriptor serial_string = {
+	.bLength = USB_STRING_LEN(22),
+	.bDescriptorType = USB_DTYPE_String,
+	.bString = u"0000000000000000000000"
+};
+
+void byte2char16(uint8_t byte, __CHAR16_TYPE__ *c)
+{
+	*c++ = 'A' + (byte >> 4);
+	*c = 'A' + (byte & 0xF);
+}
+void generate_serial(void)
+{
+	__CHAR16_TYPE__ *c = (__CHAR16_TYPE__ *)&serial_string.bString;
+	//uint8_t temp;
+	uint8_t idx = offsetof(NVM_PROD_SIGNATURES_t, LOTNUM0);
+	for (uint8_t i = 0; i < 6; i++)
+	{
+		byte2char16(SP_ReadCalibrationByte(idx++), c);
+		c += 2;
+	}
+	byte2char16(SP_ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, WAFNUM)), c);
+	c += 2;
+	idx = offsetof(NVM_PROD_SIGNATURES_t, COORDX0);
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		byte2char16(SP_ReadCalibrationByte(idx++), c);
+		c += 2;
+	}
+}
+#endif
 
 
 /* Microsoft WCID descriptor
@@ -184,6 +224,12 @@ uint16_t usb_cb_get_descriptor(uint8_t type, uint8_t index, const uint8_t** ptr)
 				case 0x02:
 					address = &product_string;
 					break;
+#ifdef USB_SERIAL_NUMBER
+				case 0x03:
+					generate_serial();
+					*ptr = (uint8_t *)&serial_string;
+					return serial_string.bLength;
+#endif
 				case 0x10:
 					address = &dfu_flash_string;
 					break;
