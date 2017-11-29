@@ -8,6 +8,7 @@
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 #include "usb_xmega.h"
+#include "dfu_config.h"
 
 typedef void (*AppPtr)(void) __attribute__ ((noreturn));
 
@@ -17,26 +18,17 @@ bool reset_flag = false;
 
 int main(void)
 {
-	__label__ start_bootloader;
-	goto start_bootloader;
-
-	// entry conditions
-	if ((*(uint32_t *)(0) == 0x4c4f4144) ||				// "LOAD"
-		(*(const __flash uint16_t *)(0) == 0xFFFF))		// reset vector blank
+	if (!CheckStartConditions())
 	{
-		*(uint32_t *)(0) = 0;							// clear signature
-		goto start_bootloader;
+		// exit bootloader
+		AppPtr application_vector = (AppPtr)0x000000;
+		CCP = CCP_IOREG_gc;		// unlock IVSEL
+		PMIC.CTRL = 0;			// disable interrupts, set vector table to app section
+		EIND = 0;				// indirect jumps go to app section
+		RAMPZ = 0;				// LPM uses lower 64k of flash
+		application_vector();
 	}
 
-	// exit bootloader
-	AppPtr application_vector = (AppPtr)0x000000;
-	CCP = CCP_IOREG_gc;		// unlock IVSEL
-	PMIC.CTRL = 0;			// disable interrupts, set vector table to app section
-	EIND = 0;				// indirect jumps go to app section
-	RAMPZ = 0;				// LPM uses lower 64k of flash
-	application_vector();
-
-start_bootloader:
 	CCPWrite(&PMIC.CTRL, PMIC_IVSEL_bm);
 
 	usb_configure_clock();
