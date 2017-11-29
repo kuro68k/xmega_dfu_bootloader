@@ -9,6 +9,7 @@
 #include "eeprom.h"
 #include "usb.h"
 #include "dfu.h"
+#include "dfu_config.h"
 
 extern bool reset_flag;
 
@@ -18,6 +19,32 @@ uint16_t write_head = 0;
 uint8_t write_buffer[APP_SECTION_PAGE_SIZE];
 uint8_t alternative = 0;
 
+#ifdef DELAYED_ZERO_PAGE
+	uint8_t zero_buffer[APP_SECTION_PAGE_SIZE];
+#endif
+
+
+void dfu_write_buffer(uint16_t page)
+{
+	if (alternative == 0)	// flash
+	{
+		SP_WaitForSPM();
+		SP_LoadFlashPage(write_buffer);
+		SP_WriteApplicationPage(APP_SECTION_START + ((uint32_t)page * APP_SECTION_PAGE_SIZE));
+		memset(write_buffer, 0xFF, sizeof(write_buffer));
+	}
+	else					// EEPROM
+	{
+		uint8_t eeprom_pages_per_buffer = APP_SECTION_PAGE_SIZE / EEPROM_PAGE_SIZE;
+		for (uint8_t i = 0; i < eeprom_pages_per_buffer; i++)
+		{
+			EEP_WaitForNVM();
+			EEP_LoadPageBuffer(&write_buffer[i * EEPROM_PAGE_SIZE], EEPROM_PAGE_SIZE);
+			EEP_AtomicWritePage((page * eeprom_pages_per_buffer) + i);
+			memset(write_buffer, 0xFF, sizeof(write_buffer));
+		}
+	}
+}
 
 void dfu_error(uint8_t error_status)
 {
@@ -96,6 +123,10 @@ void dfu_control_setup(void)
 			if (state == DFU_STATE_dfuMANIFEST_SYNC) {
 				state = DFU_STATE_dfuMANIFEST_WAIT_RST;
 				reset_flag = true;
+#ifdef DELAYED_ZERO_PAGE
+				memcpy(write_buffer, zero_buffer, sizeof(write_buffer));
+				dfu_write_buffer(0);
+#endif
 			}
 
 			uint8_t len = usb_setup.wLength;
@@ -155,24 +186,13 @@ void dfu_control_out_completion(void)
 
 			if (write_head >= usb_setup.wLength)
 			{
-				if (alternative == 0)	// flash
-				{
-					SP_WaitForSPM();
-					SP_LoadFlashPage(write_buffer);
-					SP_WriteApplicationPage(APP_SECTION_START + ((uint32_t)usb_setup.wValue * APP_SECTION_PAGE_SIZE));
-					memset(write_buffer, 0xFF, sizeof(write_buffer));
-				}
-				else					// EEPROM
-				{
-					uint8_t eeprom_pages_per_buffer = APP_SECTION_PAGE_SIZE / EEPROM_PAGE_SIZE;
-					for (uint8_t i = 0; i < eeprom_pages_per_buffer; i++)
-					{
-						EEP_WaitForNVM();
-						EEP_LoadPageBuffer(&write_buffer[i * EEPROM_PAGE_SIZE], EEPROM_PAGE_SIZE);
-						EEP_AtomicWritePage((usb_setup.wValue * eeprom_pages_per_buffer) + i);
-						memset(write_buffer, 0xFF, sizeof(write_buffer));
-					}
-				}
+#ifdef DELAYED_ZERO_PAGE
+				if (usb_setup.wValue == 0)	// zero page
+					memcpy(zero_buffer, write_buffer, sizeof(zero_buffer));
+				else
+#endif
+				dfu_write_buffer(usb_setup.wValue);
+
 				write_head = 0;
 				state = DFU_STATE_dfuDNLOAD_IDLE;
 				usb_ep0_in(0);

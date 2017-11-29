@@ -159,6 +159,9 @@
     <Compile Include="descriptors.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="dfu_config.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="eeprom.c">
       <SubType>compile</SubType>
     </Compile>
