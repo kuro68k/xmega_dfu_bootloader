@@ -9,7 +9,6 @@
 
 #include "eeprom.h"
 
-
 /**************************************************************************************************
 ** Load data into the EEPROM page buffer. Max size is EEPROM_PAGE_SIZE.
 */

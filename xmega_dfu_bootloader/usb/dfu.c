@@ -35,12 +35,26 @@ void dfu_write_buffer(uint16_t page)
 	}
 	else					// EEPROM
 	{
-		uint16_t idx = 0;
+		EEP_DisableMapping();
+		uint8_t *ptr = write_buffer;
 		for (uint8_t i = 0; i < (APP_SECTION_PAGE_SIZE / EEPROM_PAGE_SIZE); i++)
 		{
-			EEP_LoadPageBuffer(&write_buffer[idx], EEPROM_PAGE_SIZE);
-			idx += EEPROM_PAGE_SIZE;
-			EEP_AtomicWritePage(page + i);
+//			EEP_LoadPageBuffer(ptr, EEPROM_PAGE_SIZE);
+			EEP_WaitForNVM();
+			NVM.CMD = NVM_CMD_LOAD_EEPROM_BUFFER_gc;
+			NVM.ADDR1 = 0x00;
+			NVM.ADDR2 = 0x00;
+			for (uint8_t i = 0; i < EEPROM_PAGE_SIZE; ++i) {
+				NVM.ADDR0 = i;
+				NVM.DATA0 = *ptr++;
+			}
+//			EEP_AtomicWritePage(page + i);
+			uint16_t address = (((page * (APP_SECTION_PAGE_SIZE/EEPROM_PAGE_SIZE)) + i) * EEPROM_PAGE_SIZE);
+			NVM.ADDR0 = address & 0xFF;
+			NVM.ADDR1 = (address >> 8) & 0x1F;
+			NVM.ADDR2 = 0x00;
+			NVM.CMD = NVM_CMD_ERASE_WRITE_EEPROM_PAGE_gc;
+			NVM_EXEC();
 		}
 	}
 	memset(write_buffer, 0xFF, sizeof(write_buffer));
@@ -76,7 +90,9 @@ void dfu_set_alternative(uint8_t alt)
 
 void dfu_control_setup(void)
 {
+#ifdef UPLOAD_SUPPORT
 	static uint32_t read_head = 0;
+#endif
 
 	switch (usb_setup.bRequest)
 	{
@@ -113,8 +129,9 @@ void dfu_control_setup(void)
 			return usb_ep0_stall();
 
 		// read memory
+#ifdef UPLOAD_SUPPORT
 		case DFU_UPLOAD:
-			if (usb_setup.wValue >= (APP_SECTION_SIZE / APP_SECTION_PAGE_SIZE))
+			if (usb_setup.wValue >= max_page)
 				return usb_ep0_in(0);	// end of firmware image
 			if (usb_setup.wLength > sizeof(write_buffer))
 			{
@@ -122,11 +139,17 @@ void dfu_control_setup(void)
 				return;
 			}
 
-			memcpy_PF(write_buffer, read_head, usb_setup.wLength);
+			if (alternative == 0)
+				memcpy_PF(write_buffer, read_head, usb_setup.wLength);
+			else {
+				EEP_EnableMapping();
+				memcpy(write_buffer, (void *)(MAPPED_EEPROM_START + (uint16_t)read_head), usb_setup.wLength);
+			}
 			read_head += usb_setup.wLength;
 			state = DFU_STATE_dfuUPLOAD_IDLE;
 			usb_ep_start_in(0x80, write_buffer, usb_setup.wLength, false);
 			return;
+#endif
 
 		// read status
 		case DFU_GETSTATUS: {

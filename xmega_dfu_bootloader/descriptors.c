@@ -290,12 +290,14 @@ void usb_cb_completion(void) {
 }
 
 void usb_cb_control_in_completion(void) {
+#ifdef UPLOAD_SUPPORT
 	uint8_t recipient = usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK;
 	if (recipient == USB_RECIPIENT_INTERFACE) {
 		if (usb_setup.wIndex == DFU_INTERFACE) {
 			dfu_control_in_completion();
 		}
 	}
+#endif
 }
 
 void usb_cb_control_out_completion(void) {
