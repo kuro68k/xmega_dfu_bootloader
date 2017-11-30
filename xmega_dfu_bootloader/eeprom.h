@@ -53,7 +53,7 @@ inline static void EEP_WaitForNVM(void)
 */
 extern void EEP_WaitForNVM(void);
 extern void EEP_LoadPageBuffer(const uint8_t *data, uint8_t size)	__attribute__((nonnull));
-extern void EEP_AtomicWritePage(uint8_t page_addr);
+extern void EEP_AtomicWritePage(uint8_t page);
 extern void EEP_EraseAll(void);
 
 

@@ -18,6 +18,7 @@ uint8_t	status = DFU_STATUS_OK;
 uint16_t write_head = 0;
 uint8_t write_buffer[APP_SECTION_PAGE_SIZE];
 uint8_t alternative = 0;
+uint16_t max_page = APP_SECTION_SIZE/APP_SECTION_PAGE_SIZE;
 
 #ifdef DELAYED_ZERO_PAGE
 	uint8_t zero_buffer[APP_SECTION_PAGE_SIZE];
@@ -31,19 +32,18 @@ void dfu_write_buffer(uint16_t page)
 		SP_WaitForSPM();
 		SP_LoadFlashPage(write_buffer);
 		SP_WriteApplicationPage(APP_SECTION_START + ((uint32_t)page * APP_SECTION_PAGE_SIZE));
-		memset(write_buffer, 0xFF, sizeof(write_buffer));
 	}
 	else					// EEPROM
 	{
-		uint8_t eeprom_pages_per_buffer = APP_SECTION_PAGE_SIZE / EEPROM_PAGE_SIZE;
-		for (uint8_t i = 0; i < eeprom_pages_per_buffer; i++)
+		uint16_t idx = 0;
+		for (uint8_t i = 0; i < (APP_SECTION_PAGE_SIZE / EEPROM_PAGE_SIZE); i++)
 		{
-			EEP_WaitForNVM();
-			EEP_LoadPageBuffer(&write_buffer[i * EEPROM_PAGE_SIZE], EEPROM_PAGE_SIZE);
-			EEP_AtomicWritePage((page * eeprom_pages_per_buffer) + i);
-			memset(write_buffer, 0xFF, sizeof(write_buffer));
+			EEP_LoadPageBuffer(&write_buffer[idx], EEPROM_PAGE_SIZE);
+			idx += EEPROM_PAGE_SIZE;
+			EEP_AtomicWritePage(page + i);
 		}
 	}
+	memset(write_buffer, 0xFF, sizeof(write_buffer));
 }
 
 void dfu_error(uint8_t error_status)
@@ -62,6 +62,15 @@ void dfu_reset(void)
 void dfu_set_alternative(uint8_t alt)
 {
 	alternative = alt;
+	switch (alternative)
+	{
+		case 0:	// flash
+			max_page = APP_SECTION_SIZE/APP_SECTION_PAGE_SIZE;
+			break;
+		case 1: // EEPROM
+			max_page = EEPROM_SIZE/APP_SECTION_PAGE_SIZE;
+			break;
+	}
 	dfu_reset();
 }
 
@@ -79,20 +88,22 @@ void dfu_control_setup(void)
 				if (usb_setup.wLength == 0) {
 					state = DFU_STATE_dfuMANIFEST_SYNC;
 					usb_ep0_out();
-					return usb_ep0_in(0);
+					usb_ep0_in(0);
+					return;
 				}
 
-				// else start next page by erasing it
+				// else start next page
 				write_head = 0;
 				if (usb_setup.wLength > APP_SECTION_PAGE_SIZE) {
 					dfu_error(DFU_STATUS_errUNKNOWN);
 					return;
 				}
-				if (usb_setup.wValue > (APP_SECTION_SIZE/APP_SECTION_PAGE_SIZE)) {
+				if (usb_setup.wValue > max_page) {
 					dfu_error(DFU_STATUS_errADDRESS);
 					return;
 				}
-				SP_EraseApplicationPage(APP_SECTION_START + ((uint32_t)usb_setup.wValue * APP_SECTION_PAGE_SIZE));
+				if (alternative == 0)
+					SP_EraseApplicationPage(APP_SECTION_START + ((uint32_t)usb_setup.wValue * APP_SECTION_PAGE_SIZE));
 				state = DFU_STATE_dfuDNBUSY;
 				return usb_ep0_out();
 			}
@@ -111,7 +122,6 @@ void dfu_control_setup(void)
 				return;
 			}
 
-			//memcpy_PF(write_buffer, (uint32_t)(APP_SECTION_START + (usb_setup.wValue * APP_SECTION_PAGE_SIZE)), usb_setup.wLength);
 			memcpy_PF(write_buffer, read_head, usb_setup.wLength);
 			read_head += usb_setup.wLength;
 			state = DFU_STATE_dfuUPLOAD_IDLE;

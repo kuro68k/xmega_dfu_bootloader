@@ -40,12 +40,12 @@ void EEP_LoadPageBuffer(const uint8_t *data, uint8_t size)
 **
 ** page_addr should be between 0 and EEPROM_SIZE/EEPROM_PAGE_SIZE
 */
-void EEP_AtomicWritePage(uint8_t page_addr)
+void EEP_AtomicWritePage(uint8_t page)
 {
 	EEP_WaitForNVM();
 
 	// Calculate page address
-	uint16_t address = (uint16_t)(page_addr*EEPROM_PAGE_SIZE);
+	uint16_t address = (uint16_t)(page*EEPROM_PAGE_SIZE);
 
 	// Set address
 	NVM.ADDR0 = address & 0xFF;
