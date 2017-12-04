@@ -76,7 +76,7 @@ const uint8_t* usb_ep0_from_progmem(const uint8_t* addr, uint16_t size) {
 	uint16_t remaining = size;
 	NVM.CMD = NVM_CMD_NO_OPERATION_gc;
 	while (remaining--){
-		*buf++ = pgm_read_byte_far(BOOTLDR_ADDR | (uint16_t)(addr++));
+		*buf++ = pgm_read_byte_far(BOOT_SECTION_START | (uint16_t)(addr++));
 	}
 	return ep0_buf_in;
 }
