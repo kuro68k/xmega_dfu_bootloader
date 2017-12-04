@@ -30,8 +30,8 @@ const USB_DeviceDescriptor PROGMEM device_descriptor = {
 	.bDeviceProtocol        = USB_CSCP_NoDeviceProtocol,
 
 	.bMaxPacketSize0        = 64,
-	.idVendor               = 0x9999,
-	.idProduct              = 0x1000,
+	.idVendor               = USB_VID,
+	.idProduct              = USB_PID,
 	.bcdDevice              = 0x0001,
 
 	.iManufacturer          = 0x01,
@@ -240,7 +240,7 @@ uint16_t usb_cb_get_descriptor(uint8_t type, uint8_t index, const uint8_t** ptr)
 					address = &msft_string;
 					break;
 			}
-			size = pgm_read_byte_far((uint16_t)(&((USB_StringDescriptor*)address)->bLength) | BOOTLDR_ADDR);
+			size = pgm_read_byte_far((uint16_t)(&((USB_StringDescriptor*)address)->bLength) | BOOT_SECTION_START);
 			break;
 	}
 
