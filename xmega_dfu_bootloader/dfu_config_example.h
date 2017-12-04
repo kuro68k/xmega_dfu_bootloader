@@ -22,6 +22,11 @@
 #define	DELAYED_ZERO_PAGE
 
 
+/* Enable upload (read firmware from device) support.
+ */
+#define	UPLOAD_SUPPORT
+
+
 /* Return true if the DFU bootloader should be started. DFU can be started
  * by some condition (button pressed, flash memory empty etc.) or by the
  * application firmware.
