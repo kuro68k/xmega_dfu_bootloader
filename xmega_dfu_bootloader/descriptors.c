@@ -152,8 +152,11 @@ void byte2char16(uint8_t byte, __CHAR16_TYPE__ *c)
 }
 void generate_serial(void)
 {
+	static bool generated = false;
+	if (generated) return;
+	generated = true;
+
 	__CHAR16_TYPE__ *c = (__CHAR16_TYPE__ *)&serial_string.bString;
-	//uint8_t temp;
 	uint8_t idx = offsetof(NVM_PROD_SIGNATURES_t, LOTNUM0);
 	for (uint8_t i = 0; i < 6; i++)
 	{
