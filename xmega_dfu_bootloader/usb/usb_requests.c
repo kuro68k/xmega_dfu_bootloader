@@ -1,153 +1,295 @@
-#include "usb.h"
+/* usb_xmega.c
+ *
+ * Copyright 2011-2014 Nonolith Labs
+ * Copyright 2014 Technical Machine
+ * Copyright 2017-2018 Paul Qureshi
+ *
+ * Handle supported USB requests
+ */
 
-USB_SetupPacket usb_setup;
-__attribute__((__aligned__(4))) uint8_t ep0_buf_in[USB_EP0_SIZE];
-__attribute__((__aligned__(4))) uint8_t ep0_buf_out[USB_EP0_SIZE];
+#include <avr/io.h>
+#include "usb.h"
+#include "usb_config.h"
+#include "usb_xmega.h"
+#include "hid.h"
+#include "dfu.h"
+
+USB_SetupPacket_t usb_setup;
+__attribute__((__aligned__(2))) uint8_t ep0_buf_in[USB_EP0_BUFFER_SIZE];
+__attribute__((__aligned__(2))) uint8_t ep0_buf_out[USB_EP0_BUFFER_SIZE];
 volatile uint8_t usb_configuration;
 
-uint16_t usb_ep0_in_size;
-const uint8_t* usb_ep0_in_ptr;
 
-void usb_ep0_in_multi(void) {
-	uint16_t tsize = usb_ep0_in_size;
+extern uint16_t usb_handle_descriptor_request(uint8_t type, uint8_t index);
+extern void handle_msft_compatible(void);
 
-	if (tsize > USB_EP0_SIZE) {
-		tsize = USB_EP0_SIZE;
-	}
 
-	memcpy(ep0_buf_in, usb_ep0_in_ptr, tsize);
-	usb_ep_start_in(0x80, ep0_buf_in, tsize, false);
+/**************************************************************************************************
+* Handle standard setup requests
+*/
+void usb_handle_standard_setup_requests(void)
+{
+	switch (usb_setup.bRequest)
+	{
+		case USB_REQ_GetStatus:
+			// Device:		D0	Self powered
+			//				D1	Remote wake-up
+			// Interface:	(all reserved)
+			// Endpoint:	D0 endpoint halted
+			ep0_buf_in[0] = 0;
+			ep0_buf_in[1] = 0;
+			usb_ep0_in(2);
+			return usb_ep0_out();
 
-	if (tsize == 0) {
-		usb_ep0_out();
-	}
+		case USB_REQ_ClearFeature:
+		case USB_REQ_SetFeature:
+			// not implemented
+			usb_ep0_in(0);
+			return usb_ep0_out();
 
-	usb_ep0_in_size -= tsize;
-	usb_ep0_in_ptr += tsize;
-}
+		case USB_REQ_SetAddress:
+			// USB.ADDR must only change after the IN transaction has completed,
+			// see USB_TRNCOMPL_vect vector
+			usb_ep0_in(0);
+			return usb_ep0_out();
 
-void usb_handle_setup(void){
-	if ((usb_setup.bmRequestType & USB_REQTYPE_TYPE_MASK) == USB_REQTYPE_STANDARD){
-		switch (usb_setup.bRequest){
-			case USB_REQ_GetStatus:
-				ep0_buf_in[0] = 0;
-				ep0_buf_in[1] = 0;
-				usb_ep0_in(2);
-				return usb_ep0_out();
+		case USB_REQ_GetDescriptor:
+		{
+			uint8_t type = usb_setup.wValue >> 8;
+			uint8_t index = usb_setup.wValue & 0xFF;
+			uint16_t size = usb_handle_descriptor_request(type, index);
 
-			case USB_REQ_ClearFeature:
-			case USB_REQ_SetFeature:
-				usb_ep0_in(0);
-				return usb_ep0_out();
+			if (size)
+			{
+				if (size > usb_setup.wLength)	// host requested partial descriptor
+					size = usb_setup.wLength;
 
-			case USB_REQ_SetAddress:
-				usb_ep0_in(0);
-				return usb_ep0_out();
-
-			case USB_REQ_GetDescriptor: {
-				uint8_t type = (usb_setup.wValue >> 8);
-				uint8_t index = (usb_setup.wValue & 0xFF);
-				const uint8_t* descriptor = 0;
-				uint16_t size = usb_cb_get_descriptor(type, index, &descriptor);
-
-				if (size && descriptor){
-					if (size > usb_setup.wLength) {
-						size = usb_setup.wLength;
-					}
-
-					if (descriptor == ep0_buf_in) {
-						usb_ep0_in_size = 0;
-						usb_ep_start_in(0x80, ep0_buf_in, size, true);
-					} else {
-						usb_ep0_in_size = size;
-						usb_ep0_in_ptr = descriptor;
-						usb_ep0_in_multi();
-					}
-
-					return;
-				} else {
-					return usb_ep0_stall();
-				}
+				return usb_ep_start_in(0x80, ep0_buf_in, size, true);
 			}
-			case USB_REQ_GetConfiguration:
-				ep0_buf_in[0] = usb_configuration;
-				usb_ep0_in(1);
-				return usb_ep0_out();
-
-			case USB_REQ_SetConfiguration:
-				if (usb_cb_set_configuration((uint8_t)usb_setup.wValue)) {
-					usb_ep0_in(0);
-					usb_configuration = (uint8_t)(usb_setup.wValue);
-					return usb_ep0_out();
-				} else {
-					return usb_ep0_stall();
-				}
-
-			case USB_REQ_SetInterface:
-				if (usb_cb_set_interface(usb_setup.wIndex, usb_setup.wValue)) {
-					usb_ep0_in(0);
-					return usb_ep0_out();
-				} else {
-					return usb_ep0_stall();
-				}
-
-			default:
+			else
 				return usb_ep0_stall();
 		}
-	}
 
-	usb_cb_control_setup();
+		case USB_REQ_GetConfiguration:
+			ep0_buf_in[0] = usb_configuration;
+			usb_ep0_in(1);
+			return usb_ep0_out();
+
+		case USB_REQ_SetConfiguration:
+			if (usb_cb_set_configuration((uint8_t)usb_setup.wValue))
+			{
+				usb_ep0_in(0);
+				usb_configuration = (uint8_t)(usb_setup.wValue);
+				return usb_ep0_out();
+			}
+			return usb_ep0_stall();
+
+		case USB_REQ_SetInterface:
+			if (usb_cb_set_interface(usb_setup.wIndex, usb_setup.wValue))
+			{
+				usb_ep0_in(0);
+				return usb_ep0_out();
+			}
+			return usb_ep0_stall();
+
+		default:
+			return usb_ep0_stall();
+	}
 }
 
-void usb_handle_control_out_complete(void) {
-	if ((usb_setup.bmRequestType & USB_REQTYPE_TYPE_MASK) == USB_REQTYPE_STANDARD) {
-		// Let the status stage proceed
-	} else {
-		usb_cb_control_out_completion();
-	}
-}
-
-void usb_handle_control_in_complete(void) {
-	if ((usb_setup.bmRequestType & USB_REQTYPE_TYPE_MASK) == USB_REQTYPE_STANDARD) {
-		switch (usb_setup.bRequest){
-			case USB_REQ_SetAddress:
-				usb_set_address(usb_setup.wValue & 0x7F);
-				return;
-			case USB_REQ_GetDescriptor:
-				usb_ep0_in_multi();
-				return;
+/**************************************************************************************************
+* Handle class setup requests
+*/
+void usb_handle_class_setup_requests(void)
+{
+#ifdef USB_HID
+	switch (usb_setup.bRequest)
+	{
+		// IN requests
+		case USB_HIDREQ_GET_REPORT:
+		{
+			switch(usb_setup.wValue >> 8)
+			{
+				case USB_HID_REPORT_TYPE_INPUT:
+				{
+					int16_t size = hid_cb_get_report_input(ep0_buf_in, usb_setup.wIndex & 0xFF);
+					if (size == -1)
+						return usb_ep0_stall();
+					usb_ep0_in(size);
+					return usb_ep0_out();
+				}
+				case USB_HID_REPORT_TYPE_OUTPUT:
+				{
+					int16_t size = hid_cb_get_report_output(ep0_buf_in, usb_setup.wValue & 0xFF);
+					if (size == -1)
+						return usb_ep0_stall();
+					usb_ep0_in(size);
+					return usb_ep0_out();
+				}
+				case USB_HID_REPORT_TYPE_FEATURE:
+				{
+					int16_t size = hid_cb_get_report_feature(ep0_buf_in, usb_setup.wValue & 0xFF);
+					if (size == -1)
+						return usb_ep0_stall();
+					usb_ep0_in(size);
+					return usb_ep0_out();
+				}
+				default:
+					return usb_ep0_stall();
+			}
 		}
-	} else {
-		usb_cb_control_in_completion();
+
+		case USB_HIDREQ_GET_IDLE:
+			return usb_ep0_stall();
+
+		case USB_HIDREQ_GET_PROTOCOL:
+			return usb_ep0_stall();
+
+		// OUT requests
+		case USB_HIDREQ_SET_REPORT:
+		{
+			switch(usb_setup.wValue >> 8)
+			{
+				case USB_HID_REPORT_TYPE_INPUT:
+					if (hid_cb_set_report_input(ep0_buf_out, usb_setup.wLength, usb_setup.wValue & 0xFF))
+					{
+						usb_ep0_in(0);
+						return usb_ep0_clear_out_setup();
+					}
+					return usb_ep0_stall();
+				case USB_HID_REPORT_TYPE_OUTPUT:
+					if (hid_cb_set_report_output(ep0_buf_out, usb_setup.wLength, usb_setup.wValue & 0xFF))
+					{
+						usb_ep0_in(0);
+						return usb_ep0_clear_out_setup();
+					}
+					return usb_ep0_stall();
+				case USB_HID_REPORT_TYPE_FEATURE:
+					if (hid_cb_set_report_feature(ep0_buf_out, usb_setup.wLength, usb_setup.wValue & 0xFF))
+					{
+						usb_ep0_in(0);
+						return usb_ep0_clear_out_setup();
+					}
+					return usb_ep0_stall();
+				default:
+					return usb_ep0_stall();
+			}
+		}
+
+		case USB_HIDREQ_SET_IDLE:
+			usb_ep0_in(0);
+			return usb_ep0_out();
+
+		case USB_HIDREQ_SET_PROTOCOL:
+			return usb_ep0_stall();
+
+		default:
+			return usb_ep0_stall();
 	}
+#else
+	return usb_ep0_stall();
+#endif
 }
 
-void usb_handle_msft_compatible(const USB_MicrosoftCompatibleDescriptor* msft_compatible) {
-	if (usb_setup.wIndex == 0x0004) {
-		uint16_t len = usb_setup.wLength;
-		if (len > msft_compatible->dwLength) {
-			len = msft_compatible->dwLength;
+/**************************************************************************************************
+* DFU vendor requests
+*/
+#ifdef USB_DFU_RUNTIME
+void dfu_control_setup(void)
+{
+	switch (usb_setup.bRequest)
+	{
+		case DFU_DETACH:
+			dfu_cb_enter_dfu_mode();
+			return usb_ep0_out();
+
+		// read status
+		case DFU_GETSTATUS: {
+			uint8_t len = usb_setup.wLength;
+			if (len > sizeof(DFU_StatusResponse))
+				len = sizeof(DFU_StatusResponse);
+			DFU_StatusResponse *st = (DFU_StatusResponse *)ep0_buf_in;
+			st->bStatus = DFU_STATUS_OK;
+			st->bState = DFU_STATE_dfuIDLE;
+			st->bwPollTimeout[0] = 0;
+			st->bwPollTimeout[1] = 0;
+			st->bwPollTimeout[2] = 0;
+			st->iString = 0;
+			usb_ep0_in(len);
+			return usb_ep0_out();
 		}
-		if (len > USB_EP0_SIZE) {
-			len = USB_EP0_SIZE;
-		}
-		memcpy(ep0_buf_in, msft_compatible, len);
-		usb_ep_start_in(0x80, ep0_buf_in, len, false);
-		return usb_ep0_out();
-	} else {
-		return usb_ep0_stall();
+
+		// abort, clear status
+		case DFU_ABORT:
+		case DFU_CLRSTATUS:
+			usb_ep0_in(0);
+			return usb_ep0_out();
+
+		// read state
+		case DFU_GETSTATE:
+			ep0_buf_in[0] = 0;
+			usb_ep0_in(1);
+			return usb_ep0_out();
+
+		// unsupported requests
+		default:
+			return usb_ep0_stall();
 	}
 }
+#endif
 
-void* usb_string_to_descriptor(char* str) {
-	USB_StringDescriptor* desc = (((USB_StringDescriptor*)ep0_buf_in));
-	uint16_t len = strlen(str);
-	const uint16_t maxlen = (USB_EP0_SIZE - 2)/2;
-	if (len > maxlen) len = maxlen;
-	desc->bLength = USB_STRING_LEN(len);
-	desc->bDescriptorType = USB_DTYPE_String;
-	for (int i=0; i<len; i++) {
-		desc->bString[i] = str[i];
+/**************************************************************************************************
+* Handle vendor setup requests
+*/
+void usb_handle_vendor_setup_requests(void)
+{
+	uint8_t recipient = usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK;
+	if (recipient == USB_RECIPIENT_DEVICE)
+	{
+		switch(usb_setup.bRequest)
+		{
+#ifdef USB_WCID
+			case WCID_REQUEST_ID:
+				return handle_msft_compatible();
+#endif
+		}
 	}
-	return desc;
+	else if (recipient == USB_RECIPIENT_INTERFACE)
+	{
+		if (usb_setup.wIndex == 0)
+		{			// main interface
+			switch(usb_setup.bRequest)
+			{
+#ifdef USB_WCID_EXTENDED
+				case WCID_REQUEST_ID:
+					return handle_msft_compatible();
+#endif
+			}
+		}
+#ifdef USB_DFU_RUNTIME
+		else if (usb_setup.wIndex == 1)		// DFU interface
+			return dfu_control_setup();
+#endif
+	}
+
+	return usb_ep0_stall();
+}
+
+/**************************************************************************************************
+* Handle setup requests
+*/
+void usb_handle_setup(void)
+{
+	switch (usb_setup.bmRequestType & USB_REQTYPE_TYPE_MASK)
+	{
+		case USB_REQTYPE_STANDARD:
+			return usb_handle_standard_setup_requests();
+
+		case USB_REQTYPE_CLASS:
+			return usb_handle_class_setup_requests();
+
+		case USB_REQTYPE_VENDOR:
+		default:
+			return usb_handle_vendor_setup_requests();
+	}
 }

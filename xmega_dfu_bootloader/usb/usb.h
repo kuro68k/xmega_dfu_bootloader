@@ -1,19 +1,28 @@
-#pragma once
+/* usb.h
+ *
+ * Copyright 2011-2014 Nonolith Labs
+ * Copyright 2014 Technical Machine
+ * Copyright 2018 Paul Qureshi
+ *
+ * Single include for application code
+ */
+
+#ifndef USB_H_
+#define USB_H_
+
 
 #include <stdbool.h>
-#include <stdint.h>
 #include <string.h>
 
+#define USB_EP0_MAX_PACKET_SIZE		64
+#define USB_EP0_BUFFER_SIZE			64
+
 #include "usb_standard.h"
+#include "usb_config.h"
 
-#define USB_USE_PLL			// configure in usb_configure_clock()
-//#define USB_USE_RC32
-
-#define USB_EP0_SIZE 64
-
-extern USB_SetupPacket usb_setup;
-extern uint8_t ep0_buf_in[USB_EP0_SIZE];
-extern uint8_t ep0_buf_out[USB_EP0_SIZE];
+extern USB_SetupPacket_t usb_setup;
+extern uint8_t ep0_buf_in[USB_EP0_BUFFER_SIZE];
+extern uint8_t ep0_buf_out[USB_EP0_BUFFER_SIZE];
 extern volatile uint8_t USB_DeviceState;
 extern volatile uint8_t USB_Device_ConfigurationNumber;
 
@@ -21,25 +30,14 @@ typedef size_t usb_size;
 typedef uint8_t usb_ep;
 typedef uint8_t usb_bank;
 
-/// Callback on reset
-void usb_cb_reset(void);
-
-/// Callback when a setup packet is received
-void usb_cb_control_setup(void);
-
-/// Callback on a completion interrupt
-void usb_cb_completion(void);
-void usb_cb_control_in_completion(void);
-void usb_cb_control_out_completion(void);
+/// Configure the XMEGA's clock for use with USB.
+void usb_configure_clock(void);
 
 /// Callback for a SET_CONFIGURATION request
 bool usb_cb_set_configuration(uint8_t config);
 
 /// Callback for a SET_INTERFACE request
 bool usb_cb_set_interface(uint16_t interface, uint16_t altsetting);
-
-/// Callbck for a GET_DESCRIPTOR request
-uint16_t usb_cb_get_descriptor(uint8_t type, uint8_t index, const uint8_t** descriptor_ptr);
 
 /// Initialize the USB controller
 void usb_init(void);
@@ -53,11 +51,8 @@ void usb_detach(void);
 /// Called internally on USB reset
 void usb_reset(void);
 
-/// Called internally to configure the USB controller with the new address
-void usb_set_address(uint8_t addr);
-
 /// Configure and enable an endpoint
-void usb_ep_enable(usb_ep ep, uint8_t type, usb_size bufsize);
+void usb_ep_enable(usb_ep ep, uint8_t type, usb_size bufsize, bool enable_interrupt);
 
 /// Disable an endpoint
 void usb_ep_disable(usb_ep ep);
@@ -66,64 +61,31 @@ void usb_ep_disable(usb_ep ep);
 void usb_ep_reset(usb_ep ep);
 
 /// Set or clear stall on an endpoint
-void usb_set_stall_ep(usb_ep ep);
-void usb_clr_stall_ep(usb_ep ep);
+void usb_ep_set_stall(usb_ep ep);
+void usb_ep_clr_stall(usb_ep ep);
 
 /// Returns true if an endpoint can start or queue a transfer
-bool usb_ep_ready(usb_ep ep);
-
-inline void usb_ep_wait_for_ready(uint8_t ep){
-	while (!usb_ep_ready(ep)) {};
-}
+bool usb_ep_is_ready(usb_ep ep);
 
 /// Returns true if there is a completion pending on the endpoint
-bool usb_ep_pending(usb_ep ep);
+bool usb_ep_is_transaction_complete(usb_ep ep);
 
-inline void usb_ep_wait_for_pending(uint8_t ep){
-	while (!usb_ep_pending(ep)) {};
-}
+/// Clear a completion on an endpoint
+void usb_ep_clear_transaction_complete(usb_ep ep);
 
 /// Start an asynchronous host->device transfer.
 /// The data will be received into data up to size len. This buffer must remain valid until
 /// the callback is called
-usb_bank usb_ep_start_out(usb_ep ep, uint8_t* data, usb_size len);
+void usb_ep_start_out(usb_ep ep, uint8_t* data, usb_size len);
 
 /// Gets the length of a pending completion on an OUT endpoint
-usb_size usb_ep_out_length(usb_ep ep);
+usb_size usb_ep_get_out_transaction_length(usb_ep ep);
 
 /// Start an asynchronous device->host transfer.
 /// The data will be sent from the data buffer. This buffer must remain valid until the
 /// the callback is called. If zlp is set and the data is not a multiple of the packet
 /// size, an extra zero-length packet will be sent to terminate the transfer.
-usb_bank usb_ep_start_in(uint8_t ep, const uint8_t* data, usb_size size, bool zlp);
+void usb_ep_start_in(uint8_t ep, const uint8_t* data, usb_size size, bool zlp);
 
-/// Clear a completion on an endpoint
-void usb_ep_handled(usb_ep ep);
 
-/// Send `size` bytes from ep0_buf_in on endpoint 0
-void usb_ep0_in(uint8_t size);
-
-/// Accept a packet into ep0_buf_out on endpoint 0
-void usb_ep0_out(void);
-
-/// Stall endpoint 0
-void usb_ep0_stall(void);
-
-/// Force the maximum speed. Call before usb_attach()
-void usb_set_speed(USB_Speed speed);
-
-/// Gets the currently-connected speed
-USB_Speed usb_get_speed(void);
-
-/// Handle a vendor request for a Microsoft WCID compatible descriptor.
-/// bmRequestType is vendor/device, and bRequest is user-defined in the string descriptor, so
-/// the callback cb_control_setup must dispatch the request to this function.
-void usb_handle_msft_compatible(const USB_MicrosoftCompatibleDescriptor* msft_compatible);
-
-/// Convert a C string to a string descriptor in the ep0 IN buffer
-void* usb_string_to_descriptor(char* str);
-
-/// Internal common methods called by the hardware API
-void usb_handle_setup(void);
-void usb_handle_control_out_complete(void);
-void usb_handle_control_in_complete(void);
+#endif	// USB_H_

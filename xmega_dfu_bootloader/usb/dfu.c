@@ -8,6 +8,7 @@
 #include "sp_driver.h"
 #include "eeprom.h"
 #include "usb.h"
+#include "usb_xmega.h"
 #include "dfu.h"
 #include "dfu_config.h"
 
@@ -200,7 +201,7 @@ void dfu_control_out_completion(void)
 {
 	switch(usb_setup.bRequest) {
 		case DFU_DNLOAD: {
-			uint16_t len = usb_ep_out_length(0);
+			uint16_t len = usb_ep_get_out_transaction_length(0);
 			while (len > 0)
 			{
 				if (write_head >= sizeof(write_buffer)) {

@@ -1,6 +1,9 @@
 /*
  * dfu.h
  *
+ * Copyright 2018 Paul Qureshi
+ *
+ * Device Firmware Update support
  */
 
 
@@ -29,7 +32,7 @@ typedef struct
 	uint16_t	wDetachTimeout;
 	uint16_t	wTransferSize;
 	uint16_t	bcdDFUVersion;
-} DFU_FunctionalDescriptor;
+} DFU_FunctionalDescriptor_t;
 
 
 // DFU requests

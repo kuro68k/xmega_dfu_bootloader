@@ -7,7 +7,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>
-#include "usb_xmega.h"
+#include "usb.h"
 #include "dfu_config.h"
 
 typedef void (*AppPtr)(void) __attribute__ ((noreturn));

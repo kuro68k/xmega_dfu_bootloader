@@ -1,13 +1,17 @@
-#pragma once
+/* usb_xmega.h
+ *
+ * Copyright 2011-2014 Nonolith Labs
+ * Copyright 2014 Technical Machine
+ * Copyright 2018 Paul Qureshi
+ *
+ * XMEGA specific low level implementation
+ */
 
-#include "usb.h"
+#ifndef USB_XMEGA_H_
+#define USB_XMEGA_H_
 
-/// Configure the XMEGA's clock for use with USB.
-void usb_configure_clock(void);
 
-/// Copy data from program memory to the ep0 IN buffer
-const uint8_t* usb_ep0_from_progmem(const uint8_t* addr, uint16_t size);
-
+#include "usb_xmega_internal.h"
 
 typedef union USB_EP_pair{
 	union{
@@ -19,14 +23,42 @@ typedef union USB_EP_pair{
 	};
 } __attribute__((packed)) USB_EP_pair_t;
 
+//extern USB_EP_pair_t *usb_xmega_endpoints;	// for FIFO mode
 extern USB_EP_pair_t usb_xmega_endpoints[];
 extern const uint8_t usb_num_endpoints;
 
-/** Like __attribute__(align(2)), but actually works. 
-    From http://www.avrfreaks.net/index.php?name=PNphpBB2&file=viewtopic&t=121033
- */
-#define GCC_FORCE_ALIGN_2  __attribute__((section (".data,\"aw\",@progbits\n.p2align 1;")))
+/* FIFO mode
+#define USB_ENDPOINTS(NUM_EP) \
+	const uint8_t usb_num_endpoints = (NUM_EP); \
+	struct { \
+		uint8_t fifo_buffer[((NUM_EP)+1)*4]; \
+		USB_EP_pair_t usb_xmega_endpoints[(NUM_EP)+1]; \
+	} epptr_ram __attribute__((aligned(2))); \
+	USB_EP_pair_t *usb_xmega_endpoints = epptr_ram.usb_xmega_endpoints;
+*/
 
 #define USB_ENDPOINTS(NUM_EP) \
 	const uint8_t usb_num_endpoints = (NUM_EP); \
-	USB_EP_pair_t usb_xmega_endpoints[(NUM_EP)+1] GCC_FORCE_ALIGN_2;
+	USB_EP_pair_t usb_xmega_endpoints[(NUM_EP)+1] __attribute__((aligned(2)));
+
+
+/// Copy data from program memory to the ep0 IN buffer
+const uint8_t* usb_ep0_from_progmem(const uint8_t* addr, uint16_t size);
+
+/// Send size bytes from ep0_buf_in on endpoint 0
+void usb_ep0_in(uint8_t size);
+
+/// Clear out setup packet
+void usb_ep0_clear_out_setup(void);
+
+/// Accept a packet into ep0_buf_out on endpoint 0
+void usb_ep0_out(void);
+
+/// Stall endpoint 0
+void usb_ep0_stall(void);
+
+/// Internal common methods called by the hardware API
+void usb_handle_setup(void);
+
+
+#endif // USB_XMEGA_H_
