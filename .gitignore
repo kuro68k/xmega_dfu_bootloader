@@ -4,6 +4,8 @@
 # test config file
 dfu_config.h
 
+*.bak
+
 # User-specific files
 *.suo
 *.user
