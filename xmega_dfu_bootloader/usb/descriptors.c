@@ -62,7 +62,6 @@ const __flash USB_DeviceDescriptor_t device_descriptor = {
 */
 typedef struct {
 	USB_ConfigurationDescriptor_t	Config;
-	USB_InterfaceDescriptor_t		Interface0;
 	USB_InterfaceDescriptor_t		DFU_intf_flash;
 	DFU_FunctionalDescriptor_t		DFU_desc_flash;
 	USB_InterfaceDescriptor_t		DFU_intf_eeprom;
@@ -341,7 +340,7 @@ void handle_msft_compatible(void)
  *	USB descriptor request handler
  */
 uint16_t usb_handle_descriptor_request(uint8_t type, uint8_t index) {
-	const void* address = NULL;
+	const void *address = NULL;
 	uint16_t size = 0;
 
 	uint8_t cmd_backup = NVM.CMD;
@@ -400,12 +399,19 @@ uint16_t usb_handle_descriptor_request(uint8_t type, uint8_t index) {
 				default:
 					return 0;
 			}
-			size = pgm_read_byte(&((USB_StringDescriptor_t*)address)->bLength);
+#ifdef BOOTLOADER
+			size = pgm_read_byte_far((uint32_t)(uint16_t)address + offsetof(USB_StringDescriptor_t, bLength) + BOOT_SECTION_START);
+#else
+			size = pgm_read_byte_far(&((USB_StringDescriptor_t*)address)->bLength);
+#endif
 			break;
 	}
 
-	for (uint8_t i = 0; i < size; i++)
-		ep0_buf_in[i] = pgm_read_byte(address++);
+#ifdef BOOTLOADER
+	memcpy_PF(ep0_buf_in, (uint32_t)(uint16_t)address + BOOT_SECTION_START, size);
+#else
+	memcpy_P(ep0_buf_in, address, size);
+#endif
 	NVM.CMD = cmd_backup;
 	return size;
 }

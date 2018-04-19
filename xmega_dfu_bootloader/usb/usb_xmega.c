@@ -217,8 +217,7 @@ void usb_configure_clock()
 #ifdef USB_USE_RC32
 	// Configure DFLL for 48MHz, calibrated by USB SOF
 	OSC.DFLLCTRL = OSC_RC32MCREF_USBSOF_gc;
-	NVM.CMD  = NVM_CMD_READ_CALIB_ROW_gc;
-	DFLLRC32M.CALB = pgm_read_byte(offsetof(NVM_PROD_SIGNATURES_t, USBRCOSC));
+	DFLLRC32M.CALB = NVM_read_production_signature_byte(offsetof(NVM_PROD_SIGNATURES_t, USBRCOSC));
 	DFLLRC32M.COMP1 = 0x1B; //Xmega AU manual, 4.17.19
 	DFLLRC32M.COMP2 = 0xB7;
 	DFLLRC32M.CTRL = DFLL_ENABLE_bm;

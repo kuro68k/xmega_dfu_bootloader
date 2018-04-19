@@ -32,17 +32,11 @@ int main(void)
 	CCPWrite(&PMIC.CTRL, PMIC_IVSEL_bm);
 
 	usb_configure_clock();
-	USB.INTCTRLA = USB_BUSEVIE_bm | USB_INTLVL_MED_gc;
-	USB.INTCTRLB = USB_TRNIE_bm | USB_SETUPIE_bm;
 	usb_init();
-	USB.CTRLA |= USB_FIFOEN_bm;
-
 	PMIC.CTRL |= PMIC_LOLVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm;
 	sei();
-
 	usb_attach();
-	//usb_ep_enable(0, USB_EP_TYPE_BULK, APP_SECTION_PAGE_SIZE);
-	//usb_ep_start_out(0, ep0_buf_out, APP_SECTION_PAGE_SIZE);
+
 	while (!reset_flag);
 	_delay_ms(25);
 	usb_detach();
