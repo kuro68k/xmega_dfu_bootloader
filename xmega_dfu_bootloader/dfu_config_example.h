@@ -3,21 +3,8 @@
  *
  */
 
-
 #ifndef DFU_CONFIG_H_
 #define DFU_CONFIG_H_
-
-
-/* USB vendor and product IDs
- */
-#define USB_VID		0x9999
-#define USB_PID		0x1000
-
-
-/* Generate a USB serial number from the MCU's unique identifiers. Can be
- * disabled to save flash memory.
- */
-#define	USB_SERIAL_NUMBER
 
 
 /* Store the first page written in RAM until the last page is written and
@@ -47,7 +34,6 @@ static inline bool CheckStartConditions(void)
 	}
 	return false;
 }
-
 
 
 #endif /* DFU_CONFIG_H_ */
