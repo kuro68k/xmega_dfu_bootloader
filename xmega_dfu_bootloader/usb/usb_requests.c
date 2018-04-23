@@ -85,7 +85,7 @@ void usb_handle_standard_setup_requests(void)
 			return usb_ep0_stall();
 
 		case USB_REQ_SetInterface:
-			if (usb_cb_set_interface(usb_setup.wIndex, usb_setup.wValue))
+			if (usb_handle_set_interface(usb_setup.wIndex, usb_setup.wValue))
 			{
 				usb_ep0_in(0);
 				return usb_ep0_out();
@@ -276,9 +276,9 @@ void usb_handle_vendor_setup_requests(void)
 }
 
 /**************************************************************************************************
-* Handle setup requests
+* Handle control SETUP requests
 */
-void usb_handle_setup(void)
+void usb_handle_control_setup(void)
 {
 	switch (usb_setup.bmRequestType & USB_REQTYPE_TYPE_MASK)
 	{
@@ -286,10 +286,52 @@ void usb_handle_setup(void)
 			return usb_handle_standard_setup_requests();
 
 		case USB_REQTYPE_CLASS:
+			if (((usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK) == USB_RECIPIENT_INTERFACE) &&
+				(usb_setup.wIndex == DFU_INTERFACE))
+				return dfu_control_setup();
 			return usb_handle_class_setup_requests();
 
 		case USB_REQTYPE_VENDOR:
 		default:
 			return usb_handle_vendor_setup_requests();
 	}
+
+}
+
+/**************************************************************************************************
+* Handle control OUT requests
+*/
+void usb_handle_control_out(void)
+{
+	if (((usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK) == USB_RECIPIENT_INTERFACE) &&
+		(usb_setup.wIndex == DFU_INTERFACE))
+		return dfu_control_out_completion();
+
+	usb_handle_control_setup();
+}
+
+/**************************************************************************************************
+* Handle control IN requests
+*/
+void usb_handle_control_in(void)
+{
+	if (((usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK) == USB_RECIPIENT_INTERFACE) &&
+		(usb_setup.wIndex == DFU_INTERFACE))
+		return dfu_control_in_completion();
+}
+
+/**************************************************************************************************
+* Handle set interface requests
+*/
+bool usb_handle_set_interface(uint16_t interface, uint16_t altsetting)
+{
+	if (interface == DFU_INTERFACE)
+	{
+		if (altsetting < 2)
+		{
+			dfu_set_alternative(altsetting);
+			return true;
+		}
+	}
+	return false;
 }

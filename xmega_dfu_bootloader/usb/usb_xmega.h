@@ -58,7 +58,10 @@ void usb_ep0_out(void);
 void usb_ep0_stall(void);
 
 /// Internal common methods called by the hardware API
-void usb_handle_setup(void);
+void usb_handle_control_setup(void);
+void usb_handle_control_out(void);
+void usb_handle_control_in(void);
+bool usb_handle_set_interface(uint16_t interface, uint16_t altsetting);
 
 
 #endif // USB_XMEGA_H_

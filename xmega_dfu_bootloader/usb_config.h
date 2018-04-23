@@ -19,7 +19,7 @@
 
 // USB vendor and product IDs, version number
 #define USB_VID				0x9999
-#define USB_PID				0x1002
+#define USB_PID				0x1004
 
 #define USB_VERSION_MAJOR	1
 #define USB_VERSION_MINOR	0
@@ -57,6 +57,12 @@ static inline void dfu_cb_enter_dfu_mode(void)
 	asm("wdr");
 	CCPWrite(&WDT.CTRL, WDT_WPER_128CLK_gc | WDT_ENABLE_bm | WDT_WCEN_bm);
 }
+
+
+/****************************************************************************************
+* DFU (Device Firmware Update) mode interface (for bootloader)
+*/
+#define USB_DFU_MODE
 
 
 /****************************************************************************************

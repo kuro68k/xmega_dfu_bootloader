@@ -26,6 +26,9 @@ uint16_t max_page = APP_SECTION_SIZE/APP_SECTION_PAGE_SIZE;
 #endif
 
 
+/**************************************************************************************************
+* Write buffer to flash/EEPROM
+*/
 void dfu_write_buffer(uint16_t page)
 {
 	if (alternative == 0)	// flash
@@ -61,12 +64,18 @@ void dfu_write_buffer(uint16_t page)
 	memset(write_buffer, 0xFF, sizeof(write_buffer));
 }
 
+/**************************************************************************************************
+* Handle errors with DFU protocol
+*/
 void dfu_error(uint8_t error_status)
 {
 	status = error_status;
 	state = DFU_STATE_dfuERROR;
 }
 
+/**************************************************************************************************
+* Reset DFU state machine
+*/
 void dfu_reset(void)
 {
 	state = DFU_STATE_dfuIDLE;
@@ -74,6 +83,9 @@ void dfu_reset(void)
 	write_head = 0;
 }
 
+/**************************************************************************************************
+* Handle set USB interface request
+*/
 void dfu_set_alternative(uint8_t alt)
 {
 	alternative = alt;
@@ -89,6 +101,9 @@ void dfu_set_alternative(uint8_t alt)
 	dfu_reset();
 }
 
+/**************************************************************************************************
+* Handle DFU commands
+*/
 void dfu_control_setup(void)
 {
 #ifdef UPLOAD_SUPPORT
@@ -197,6 +212,9 @@ void dfu_control_setup(void)
 	}
 }
 
+/**************************************************************************************************
+* Handle control endpoint OUT requests
+*/
 void dfu_control_out_completion(void)
 {
 	switch(usb_setup.bRequest) {
@@ -237,6 +255,9 @@ void dfu_control_out_completion(void)
 	}
 }
 
+/**************************************************************************************************
+* Handle control endpoint IN requests
+*/
 void dfu_control_in_completion(void)
 {
 	if (state == DFU_STATE_dfuUPLOAD_IDLE)
