@@ -22,8 +22,6 @@ USB_ENDPOINTS(1);
 USB_ENDPOINTS(2);
 #endif
 
-#define DFU_INTERFACE			0
-
 /**************************************************************************************************
 * USB Device descriptor
 */
@@ -428,17 +426,4 @@ bool usb_cb_set_configuration(uint8_t config) {
 	} else {
 		return false;
 	}
-}
-
-/**************************************************************************************************
- *	Set USB interface
- */
-bool usb_cb_set_interface(uint16_t interface, uint16_t altsetting) {
-	if (interface == DFU_INTERFACE) {
-		if (altsetting < 2) {
-			dfu_set_alternative(altsetting);
-			return true;
-		}
-	}
-	return false;
 }

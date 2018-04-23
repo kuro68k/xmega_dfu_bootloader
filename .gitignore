@@ -5,6 +5,7 @@
 dfu_config.h
 
 *.bak
+host/
 
 # User-specific files
 *.suo
