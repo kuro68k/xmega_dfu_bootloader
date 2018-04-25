@@ -14,7 +14,7 @@ typedef void (*AppPtr)(void) __attribute__ ((noreturn));
 
 extern void CCPWrite(volatile uint8_t *address, uint8_t value);
 
-bool reset_flag = false;
+volatile bool reset_flag = false;
 
 int main(void)
 {
