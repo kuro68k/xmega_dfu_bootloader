@@ -14,7 +14,6 @@
 #include "usb_xmega_internal.h"
 #include "xmega.h"
 
-
 #define _USB_EP(epaddr) \
 	USB_EP_pair_t* pair = &usb_xmega_endpoints[(epaddr & 0x3F)]; \
 	USB_EP_t* e __attribute__ ((unused)) = &pair->ep[!!(epaddr&0x80)]; \
@@ -277,7 +276,7 @@ ISR(USB_TRNCOMPL_vect)
 	USB.FIFOWP = 0;	// clear TCIF
 	USB.INTFLAGSBCLR = USB_SETUPIF_bm | USB_TRNIF_bm;
 
-	// Endpoint 0 (default control endpoint)
+	// EP0 (control) OUT/SETUP
 	uint8_t status = usb_xmega_endpoints[0].out.STATUS;		// Read once to prevent race condition
 	if (status & USB_EP_SETUP_bm)
 	{
@@ -285,9 +284,7 @@ ISR(USB_TRNCOMPL_vect)
 		LACR16(&(usb_xmega_endpoints[0].out.STATUS), USB_EP_TRNCOMPL0_bm | USB_EP_BUSNACK0_bm | USB_EP_SETUP_bm);
 		if (((usb_setup.bmRequestType & 0x80) != 0) ||	// IN host requesting response
 			(usb_setup.wLength == 0))					// OUT but no data
-		{
 			usb_handle_control_setup();
-		}
 		// else deferred until data stage complete
 	}
 	else if (status & USB_EP_TRNCOMPL0_bm)

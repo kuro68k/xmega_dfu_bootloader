@@ -12,7 +12,7 @@
 #include "dfu.h"
 #include "dfu_config.h"
 
-extern bool reset_flag;
+extern volatile bool reset_flag;
 
 uint8_t	state = DFU_STATE_dfuIDLE;
 uint8_t	status = DFU_STATUS_OK;

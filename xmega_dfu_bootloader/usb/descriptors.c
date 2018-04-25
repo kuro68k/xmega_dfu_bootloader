@@ -22,6 +22,7 @@ USB_ENDPOINTS(1);
 USB_ENDPOINTS(2);
 #endif
 
+
 /**************************************************************************************************
 * USB Device descriptor
 */
@@ -414,8 +415,6 @@ uint16_t usb_handle_descriptor_request(uint8_t type, uint8_t index) {
 	return size;
 }
 
-void usb_cb_reset(void) {
-}
 
 /**************************************************************************************************
  *	Set USB configuration

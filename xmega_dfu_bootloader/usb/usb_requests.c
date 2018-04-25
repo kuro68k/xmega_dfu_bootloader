@@ -295,7 +295,6 @@ void usb_handle_control_setup(void)
 		default:
 			return usb_handle_vendor_setup_requests();
 	}
-
 }
 
 /**************************************************************************************************
