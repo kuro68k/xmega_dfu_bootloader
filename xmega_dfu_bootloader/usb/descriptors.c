@@ -339,7 +339,7 @@ void handle_msft_compatible(void)
  *	USB descriptor request handler
  */
 uint16_t usb_handle_descriptor_request(uint8_t type, uint8_t index) {
-	const void *address = NULL;
+	uint32_t address = 0;
 	uint16_t size = 0;
 
 	uint8_t cmd_backup = NVM.CMD;
@@ -348,20 +348,20 @@ uint16_t usb_handle_descriptor_request(uint8_t type, uint8_t index) {
 	switch (type)
 	{
 		case USB_DTYPE_Device:
-			address = &device_descriptor;
+			address = pgm_get_far_address(device_descriptor);
 			size    = sizeof(USB_DeviceDescriptor_t);
 			break;
 		case USB_DTYPE_Configuration:
-			address = &configuration_descriptor;
+			address = pgm_get_far_address(configuration_descriptor);
 			size    = sizeof(ConfigDesc_t);
 			break;
 #ifdef USB_HID
 		case USB_DTYPE_HID:
-			address = &configuration_descriptor.HIDDescriptor;
+			address = pgm_get_far_address(configuration_descriptor.HIDDescriptor);
 			size	= sizeof(USB_HIDDescriptor_t);
 			break;
 		case USB_DTYPE_Report:
-			address = &hid_report_descriptor;
+			address = pgm_get_far_address(hid_report_descriptor);
 			size    = sizeof(hid_report_descriptor);
 			break;
 #endif
@@ -369,48 +369,38 @@ uint16_t usb_handle_descriptor_request(uint8_t type, uint8_t index) {
 			switch (index)
 			{
 				case 0x00:
-					address = &language_string;
+					address = pgm_get_far_address(language_string);
 					break;
 				case 0x01:
-					address = &manufacturer_string;
+					address = pgm_get_far_address(manufacturer_string);
 					break;
 				case 0x02:
-					address = &product_string;
+					address = pgm_get_far_address(product_string);
 					break;
 #ifdef USB_SERIAL_NUMBER
 				case 0x03:
 					generate_serial();
 					return sizeof(USB_StringDescriptor_t) + (22*2);
 #endif
-
+#ifdef USB_DFU_RUNTIME
 				case 0x10:
-					address = &dfu_flash_string;
+					address = pgm_get_far_address(dfu_runtime_string);
 					break;
-				case 0x11:
-					address = &dfu_eeprom_string;
-					break;
+#endif
 #ifdef USB_WCID
 				case 0xEE:
-					address = &msft_string;
+					address = pgm_get_far_address(msft_string);
 					break;
 #endif
 
 				default:
 					return 0;
 			}
-#ifdef BOOTLOADER
-			size = pgm_read_byte_far((uint32_t)(uint16_t)address + offsetof(USB_StringDescriptor_t, bLength) + BOOT_SECTION_START);
-#else
-			size = pgm_read_byte_far(&((USB_StringDescriptor_t*)address)->bLength);
-#endif
+			size = pgm_read_byte_far(address + offsetof(USB_StringDescriptor_t, bLength));
 			break;
 	}
 
-#ifdef BOOTLOADER
-	memcpy_PF(ep0_buf_in, (uint32_t)(uint16_t)address + BOOT_SECTION_START, size);
-#else
-	memcpy_P(ep0_buf_in, address, size);
-#endif
+	memcpy_PF(ep0_buf_in, address, size);
 	NVM.CMD = cmd_backup;
 	return size;
 }
