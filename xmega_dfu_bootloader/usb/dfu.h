@@ -11,7 +11,7 @@
 #define DFU_H_
 
 
-#define DFU_INTERFACE			0
+#define DFU_INTERFACE						0
 
 // USB descriptors
 #define	DFU_INTERFACE_CLASS					0xFE
