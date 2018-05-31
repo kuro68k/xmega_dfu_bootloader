@@ -275,8 +275,8 @@ __attribute__((__aligned__(2))) const USB_MicrosoftExtendedPropertiesDescriptor_
 
 /*
 // example of one extended property (WinUSB GUID)
-__attribute__((__aligned__(4))) const USB_MicrosoftExtendedPropertiesDescriptor msft_extended = {
-	.dwLength = sizeof(USB_MicrosoftExtendedPropertiesDescriptor),
+__attribute__((__aligned__(4))) const USB_MicrosoftExtendedPropertiesDescriptor_t msft_extended = {
+	.dwLength = sizeof(USB_MicrosoftExtendedPropertiesDescriptor_t),
 	.dwLength = 142,
 	.bcdVersion = 0x0100,
 	.wIndex = 0x0005,
@@ -292,8 +292,8 @@ __attribute__((__aligned__(4))) const USB_MicrosoftExtendedPropertiesDescriptor 
 /*
 // example of one extended property (WinUSB GUID) using "DeviceInterfaceGUIDs" (plural)
 // see "important note 2" at https://github.com/pbatard/libwdi/wiki/WCID-Devices#Defining_a_Device_Interface_GUID_or_other_device_specific_properties
-__attribute__((__aligned__(4))) const USB_MicrosoftExtendedPropertiesDescriptor msft_extended = {
-	.dwLength = sizeof(USB_MicrosoftExtendedPropertiesDescriptor),
+__attribute__((__aligned__(4))) const USB_MicrosoftExtendedPropertiesDescriptor_t msft_extended = {
+	.dwLength = sizeof(USB_MicrosoftExtendedPropertiesDescriptor_t),
 	.dwLength = 146,
 	.bcdVersion = 0x0100,
 	.wIndex = 0x0005,
@@ -385,6 +385,14 @@ uint16_t usb_handle_descriptor_request(uint8_t type, uint8_t index) {
 #ifdef USB_DFU_RUNTIME
 				case 0x10:
 					address = pgm_get_far_address(dfu_runtime_string);
+					break;
+#endif
+#ifdef USB_DFU_MODE
+				case 0x10:
+					address = pgm_get_far_address(dfu_flash_string);
+					break;
+				case 0x11:
+					address = pgm_get_far_address(dfu_eeprom_string);
 					break;
 #endif
 #ifdef USB_WCID
