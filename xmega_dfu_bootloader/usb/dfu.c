@@ -205,6 +205,11 @@ void dfu_control_setup(void)
 			usb_ep0_in(1);
 			return usb_ep0_out();
 
+		case DFU_DETACH:
+			reset_flag = true;
+			usb_ep0_in(0);
+			return usb_ep0_out();
+
 		// unsupported requests
 		default:
 			dfu_error(DFU_STATUS_errSTALLEDPKT);
