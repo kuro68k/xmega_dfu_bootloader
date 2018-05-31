@@ -98,10 +98,64 @@ void usb_handle_standard_setup_requests(void)
 }
 
 /**************************************************************************************************
+* DFU vendor requests
+*/
+#ifdef USB_DFU_RUNTIME
+void dfu_control_setup(void)
+{
+	switch (usb_setup.bRequest)
+	{
+		case DFU_DETACH:
+			dfu_cb_enter_dfu_mode();
+			usb_ep0_in(0);
+			return usb_ep0_out();
+
+		// read status
+		case DFU_GETSTATUS: {
+			uint8_t len = usb_setup.wLength;
+			if (len > sizeof(DFU_StatusResponse))
+				len = sizeof(DFU_StatusResponse);
+			DFU_StatusResponse *st = (DFU_StatusResponse *)ep0_buf_in;
+			st->bStatus = DFU_STATUS_OK;
+			st->bState = DFU_STATE_appIDLE;
+			st->bwPollTimeout[0] = 0;
+			st->bwPollTimeout[1] = 0;
+			st->bwPollTimeout[2] = 0;
+			st->iString = 0;
+			usb_ep0_in(len);
+			return usb_ep0_out();
+		}
+
+		// abort, clear status
+		case DFU_ABORT:
+		case DFU_CLRSTATUS:
+			usb_ep0_in(0);
+			return usb_ep0_out();
+
+		// read state
+		case DFU_GETSTATE:
+			ep0_buf_in[0] = 0;
+			usb_ep0_in(1);
+			return usb_ep0_out();
+
+		// unsupported requests
+		default:
+			return usb_ep0_stall();
+	}
+}
+#endif
+
+/**************************************************************************************************
 * Handle class setup requests
 */
 void usb_handle_class_setup_requests(void)
 {
+#if defined(USB_DFU_RUNTIME) || defined(USB_DFU_MODE)
+	if (((usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK) == USB_RECIPIENT_INTERFACE) &&
+		(usb_setup.wIndex == DFU_INTERFACE))
+		return dfu_control_setup();
+#endif
+
 #ifdef USB_HID
 	switch (usb_setup.bRequest)
 	{
@@ -192,53 +246,6 @@ void usb_handle_class_setup_requests(void)
 }
 
 /**************************************************************************************************
-* DFU vendor requests
-*/
-#ifdef USB_DFU_RUNTIME
-void dfu_control_setup(void)
-{
-	switch (usb_setup.bRequest)
-	{
-		case DFU_DETACH:
-			dfu_cb_enter_dfu_mode();
-			return usb_ep0_out();
-
-		// read status
-		case DFU_GETSTATUS: {
-			uint8_t len = usb_setup.wLength;
-			if (len > sizeof(DFU_StatusResponse))
-				len = sizeof(DFU_StatusResponse);
-			DFU_StatusResponse *st = (DFU_StatusResponse *)ep0_buf_in;
-			st->bStatus = DFU_STATUS_OK;
-			st->bState = DFU_STATE_dfuIDLE;
-			st->bwPollTimeout[0] = 0;
-			st->bwPollTimeout[1] = 0;
-			st->bwPollTimeout[2] = 0;
-			st->iString = 0;
-			usb_ep0_in(len);
-			return usb_ep0_out();
-		}
-
-		// abort, clear status
-		case DFU_ABORT:
-		case DFU_CLRSTATUS:
-			usb_ep0_in(0);
-			return usb_ep0_out();
-
-		// read state
-		case DFU_GETSTATE:
-			ep0_buf_in[0] = 0;
-			usb_ep0_in(1);
-			return usb_ep0_out();
-
-		// unsupported requests
-		default:
-			return usb_ep0_stall();
-	}
-}
-#endif
-
-/**************************************************************************************************
 * Handle vendor setup requests
 */
 void usb_handle_vendor_setup_requests(void)
@@ -266,10 +273,6 @@ void usb_handle_vendor_setup_requests(void)
 #endif
 			}
 		}
-#ifdef USB_DFU_RUNTIME
-		else if (usb_setup.wIndex == 1)		// DFU interface
-			return dfu_control_setup();
-#endif
 	}
 
 	return usb_ep0_stall();
@@ -286,9 +289,6 @@ void usb_handle_control_setup(void)
 			return usb_handle_standard_setup_requests();
 
 		case USB_REQTYPE_CLASS:
-			if (((usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK) == USB_RECIPIENT_INTERFACE) &&
-				(usb_setup.wIndex == DFU_INTERFACE))
-				return dfu_control_setup();
 			return usb_handle_class_setup_requests();
 
 		case USB_REQTYPE_VENDOR:
@@ -302,11 +302,6 @@ void usb_handle_control_setup(void)
 */
 void usb_handle_control_out(void)
 {
-	if (((usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK) == USB_RECIPIENT_INTERFACE) &&
-		(usb_setup.wIndex == DFU_INTERFACE))
-		return dfu_control_out_completion();
-
-	usb_handle_control_setup();
 }
 
 /**************************************************************************************************

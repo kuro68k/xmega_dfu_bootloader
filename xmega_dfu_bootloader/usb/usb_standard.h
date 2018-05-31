@@ -265,9 +265,9 @@ typedef struct {
 	uint32_t dwPropLength;
 	uint32_t dwType;
 	uint16_t wNameLength;
-	wchar_t name[20];
+	wchar_t name[21];
 	uint32_t dwDataLength;
-	wchar_t data[39];
+	wchar_t data[40];
 } __attribute__((packed)) USB_MicrosoftExtendedPropertiesDescriptor_t;
 */
 

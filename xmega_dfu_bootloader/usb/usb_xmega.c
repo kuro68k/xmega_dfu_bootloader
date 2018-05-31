@@ -14,6 +14,7 @@
 #include "usb_xmega_internal.h"
 #include "xmega.h"
 
+
 #define _USB_EP(epaddr) \
 	USB_EP_pair_t* pair = &usb_xmega_endpoints[(epaddr & 0x3F)]; \
 	USB_EP_t* e __attribute__ ((unused)) = &pair->ep[!!(epaddr&0x80)]; \
@@ -289,11 +290,12 @@ ISR(USB_TRNCOMPL_vect)
 	}
 	else if (status & USB_EP_TRNCOMPL0_bm)
 	{
-		usb_handle_control_out();
-		LACR16(&(usb_xmega_endpoints[0].out.STATUS), USB_EP_TRNCOMPL0_bm);
+		usb_handle_control_setup();
+		//usb_handle_control_out();
+		//LACR16(&(usb_xmega_endpoints[0].out.STATUS), USB_EP_TRNCOMPL0_bm);
 	}
 
-	// EP0 IN (control) endpoint
+	// EP0 (control) IN
 	if (usb_xmega_endpoints[0].in.STATUS & USB_EP_TRNCOMPL0_bm)
 	{
 		// SET_ADDRESS requests must only take effect after the response IN packet has
