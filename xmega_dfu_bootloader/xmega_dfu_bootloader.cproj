@@ -100,7 +100,7 @@
   <avrgcc.linker.memorysettings.Sram>
     <ListValues>
       <Value>.noinit=0x2000</Value>
-      <Value>.data=0x2010</Value>
+      <Value>.data=0x2004</Value>
     </ListValues>
   </avrgcc.linker.memorysettings.Sram>
   <avrgcc.assembler.general.IncludePaths>

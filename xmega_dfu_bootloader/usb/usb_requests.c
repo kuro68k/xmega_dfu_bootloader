@@ -150,12 +150,6 @@ void dfu_control_setup(void)
 */
 void usb_handle_class_setup_requests(void)
 {
-#if defined(USB_DFU_RUNTIME) || defined(USB_DFU_MODE)
-	if (((usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK) == USB_RECIPIENT_INTERFACE) &&
-		(usb_setup.wIndex == DFU_INTERFACE))
-		return dfu_control_setup();
-#endif
-
 #ifdef USB_HID
 	switch (usb_setup.bRequest)
 	{
@@ -289,6 +283,11 @@ void usb_handle_control_setup(void)
 			return usb_handle_standard_setup_requests();
 
 		case USB_REQTYPE_CLASS:
+#if defined(USB_DFU_RUNTIME) || defined(USB_DFU_MODE)
+			if (((usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK) == USB_RECIPIENT_INTERFACE) &&
+				(usb_setup.wIndex == DFU_INTERFACE))
+				return dfu_control_setup();
+#endif
 			return usb_handle_class_setup_requests();
 
 		case USB_REQTYPE_VENDOR:
@@ -302,6 +301,13 @@ void usb_handle_control_setup(void)
 */
 void usb_handle_control_out(void)
 {
+#if defined(USB_DFU_MODE)
+	if (((usb_setup.bmRequestType & USB_REQTYPE_RECIPIENT_MASK) == USB_RECIPIENT_INTERFACE) &&
+		(usb_setup.wIndex == DFU_INTERFACE))
+		return dfu_control_out_completion();
+#endif
+
+	usb_handle_control_setup();
 }
 
 /**************************************************************************************************
