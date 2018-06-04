@@ -8,7 +8,7 @@
  */
 
 #include <avr/io.h>
-
+#include <stddef.h>
 #include "usb.h"
 #include "usb_xmega.h"
 #include "usb_xmega_internal.h"

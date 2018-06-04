@@ -255,42 +255,5 @@ typedef struct {
 	USB_MicrosoftCompatibleDescriptor_Interface_t interfaces[];
 } __attribute__((packed)) USB_MicrosoftCompatibleDescriptor_t;
 
-#include <stddef.h>	// for wchar_t
-/*
-typedef struct {
-	uint32_t dwLength;
-	uint16_t bcdVersion;
-	uint16_t wIndex;
-	uint16_t wCount;
-	uint32_t dwPropLength;
-	uint32_t dwType;
-	uint16_t wNameLength;
-	wchar_t name[21];
-	uint32_t dwDataLength;
-	wchar_t data[40];
-} __attribute__((packed)) USB_MicrosoftExtendedPropertiesDescriptor_t;
-*/
-
-typedef struct {
-	uint32_t dwLength;
-	uint16_t bcdVersion;
-	uint16_t wIndex;
-	uint16_t wCount;
-
-	uint32_t dwPropLength;
-	uint32_t dwType;
-	uint16_t wNameLength;
-	wchar_t name[20];
-	uint32_t dwDataLength;
-	wchar_t data[39];
-
-	uint32_t dwPropLength2;
-	uint32_t dwType2;
-	uint16_t wNameLength2;
-	wchar_t name2[6];
-	uint32_t dwDataLength2;
-	wchar_t data2[13];
-} __attribute__((packed)) USB_MicrosoftExtendedPropertiesDescriptor_t;
-
 
 #endif	// USB_STANDARD_H_

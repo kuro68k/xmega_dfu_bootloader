@@ -257,15 +257,12 @@ void usb_handle_vendor_setup_requests(void)
 	}
 	else if (recipient == USB_RECIPIENT_INTERFACE)
 	{
-		if (usb_setup.wIndex == 0)
-		{			// main interface
-			switch(usb_setup.bRequest)
-			{
+		switch(usb_setup.bRequest)
+		{
 #ifdef USB_WCID_EXTENDED
-				case WCID_REQUEST_ID:
-					return handle_msft_compatible();
+			case WCID_REQUEST_ID:
+				return handle_msft_compatible();
 #endif
-			}
 		}
 	}
 
