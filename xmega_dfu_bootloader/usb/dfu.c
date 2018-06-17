@@ -33,9 +33,30 @@ void dfu_write_buffer(uint16_t page)
 {
 	if (alternative == 0)	// flash
 	{
+#ifdef VERIFY_WRITES
+		uint8_t attempts = 3;
+		for(;;)
+		{
+			SP_WaitForSPM();
+			SP_LoadFlashPage(write_buffer);
+			SP_WriteApplicationPage(APP_SECTION_START + ((uint32_t)page * APP_SECTION_PAGE_SIZE));
+			// verify write
+			SP_WaitForSPM();
+			if (memcmp_PF(write_buffer, (uint_farptr_t)page * APP_SECTION_PAGE_SIZE, APP_SECTION_PAGE_SIZE) == 0)
+				break;
+			attempts--;
+			if (attempts == 0)
+			{
+				status = DFU_STATUS_errWRITE;
+				break;
+			}
+			SP_EraseApplicationPage(APP_SECTION_START + ((uint32_t)page * APP_SECTION_PAGE_SIZE));
+		}
+#else
 		SP_WaitForSPM();
 		SP_LoadFlashPage(write_buffer);
 		SP_WriteApplicationPage(APP_SECTION_START + ((uint32_t)page * APP_SECTION_PAGE_SIZE));
+#endif
 	}
 	else					// EEPROM
 	{

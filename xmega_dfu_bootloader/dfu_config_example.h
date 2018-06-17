@@ -15,6 +15,11 @@
 #define	DELAYED_ZERO_PAGE
 
 
+/* Verify writes and retry if they fail.
+ */
+#define VERIFY_WRITES
+
+
 /* Enable upload (read firmware from device) support.
  */
 #define	UPLOAD_SUPPORT
