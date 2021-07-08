@@ -15,6 +15,6 @@ Known limitations:
 Instructions: Create dfu_config.h (example supplied). Set configuration options. Adjust the project settings if required (particularly the target device and .text section address in the linker memory section). Check that the compiled bootloader fits into your bootloader section, especially if you have a 4k device.
 
 
-Based on my fork of Kevin Mehall's minimal USB stack (https://github.com/kuro68k/usb_km_xmega).
+For use with my USB stack (https://github.com/kuro68k/usb_km_xmega).
 
 Licence: GPL V3
