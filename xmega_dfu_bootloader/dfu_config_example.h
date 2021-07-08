@@ -9,7 +9,7 @@
 
 /* Store the first page written in RAM until the last page is written and
  * the bootloader enters the manifest state. The first page will be erased.
- * If the firmware update is interrupted the bootloader can detect and empty
+ * If the firmware update is interrupted the bootloader can detect an empty
  * page zero and go back into DFU mode.
  */
 #define	DELAYED_ZERO_PAGE
